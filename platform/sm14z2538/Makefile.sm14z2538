@@ -1,0 +1,61 @@
+# cc2538dk platform makefile
+#根目录如果没有定义则输出错误信息
+ifndef CONTIKI
+  $(error CONTIKI not defined! You must specify where CONTIKI resides!)
+endif
+#添加目录
+CONTIKI_TARGET_DIRS = . dev
+#添加led驱动
+CONTIKI_TARGET_SOURCEFILES += leds.c leds-arch.c
+#添加OLED驱动
+CONTIKI_TARGET_SOURCEFILES += oled-arch.c
+CONTIKI_TARGET_SOURCEFILES += oled.c
+#添加主文件
+CONTIKI_TARGET_SOURCEFILES += contiki-main.c
+#添加传感器文件
+CONTIKI_TARGET_SOURCEFILES += sensors.c smartrf-sensors.c
+#添加按键驱动
+CONTIKI_TARGET_SOURCEFILES += button-sensor.c als-sensor.c
+#添加源码到源码文件集合中
+CONTIKI_SOURCEFILES += $(CONTIKI_TARGET_SOURCEFILES)
+#清除编译中间过程文件
+CLEAN += *.sm14z2538
+
+### Unless the example dictates otherwise, build with code size optimisations
+ifndef SMALL
+  SMALL = 1
+endif
+
+### Define the CPU directory
+#默认的CPU路径
+#CONTIKI_CPU=$(CONTIKI)/cpu/cc2538
+#include $(CONTIKI_CPU)/Makefile.cc2538
+
+CONTIKI_CPU=$(CONTIKI)/cpu/sm14z2538
+#添加指定的CPU构建配置文件
+include $(CONTIKI_CPU)/Makefile.sm14z2538
+
+#添加操作系统内核源码的网络模块到模块中
+MODULES += core/net core/net/mac \
+           core/net/mac/contikimac \
+           core/net/llsec
+           
+#添加IP64路由和网络驱动到模块集合中
+ifdef ROUTER
+MODULES += core/net/ip64 dev/enc28j60/ 
+#添加ip64地址处理模块,mdns应用模块
+MODULES += apps/ip64-addr apps/mdns
+#添加网络硬件驱动
+CONTIKI_TARGET_SOURCEFILES+=enc28j60-arch.c
+endif
+#添加路由相关的模块
+MODULES += apps/simple-rpl apps/aes apps/drowsie \
+#调用bsl下载程序
+BSL = $(CONTIKI)/tools/cc2538-bsl/cc2538-bsl.py
+
+%.upload: %.bin
+ifeq ($(wildcard $(BSL)), )
+	@echo "ERROR: Could not find the cc2538-bsl script. Did you run 'git submodule update --init' ?"
+else
+	python $(BSL) -e -w -v $<
+endif
